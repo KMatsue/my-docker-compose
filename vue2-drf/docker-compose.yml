@@ -1,0 +1,73 @@
+version: "3"
+
+services:
+  postgres:
+    image: postgres
+    container_name: postgres
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      # - ./db:/var/lib/postgresql/data
+    networks:
+      - net
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+
+  backend:
+    build: ./backend
+    container_name: django-project
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - ./backend:/backend
+    networks:
+      - net
+    ports:
+      - "8000:8000"
+    environment:
+      - POSTGRES_NAME=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    depends_on:
+      - postgres
+
+  frontend:
+    build: ./frontend
+    container_name: vue-project
+    ports:
+      - '8080:8080'
+    volumes:
+      - ./frontend:/frontend
+    stdin_open: true
+    tty: true
+
+  splash:
+    depends_on:
+      - postgres
+    image: scrapinghub/splash:3.5
+    container_name: splash
+    networks:
+      - net
+    ports:
+      - 8050:8050
+
+  scrapy:
+    depends_on:
+      - splash
+    build:
+      context: ./backend/scrapy
+      dockerfile: Dockerfile
+    container_name: scrapy
+    networks:
+      - net
+    volumes:
+      - $PWD/backend/scrapy:/usr/src/app
+    tty: true
+
+networks:
+  net:
+
+volumes:
+ db-data:
